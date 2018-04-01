@@ -9,6 +9,8 @@
 import pysheaf as ps
 import numpy as np
 
+import pysheaf.covers as covers
+
 # Metrics and spherical geometry
 def distance(v1,v2):
     """Compute distance in km between two lat/lon pairs"""
@@ -185,14 +187,34 @@ input_data=[ps.Section([ps.SectionCell(support=0,value=np.array([-70.649,42.753,
                         ps.SectionCell(support=2,value=np.array([-70.617,42.834,11236,419,310])), # U2
                         ps.SectionCell(support=3,value=np.array([77.2,0.985])), # U3
                         ps.SectionCell(support=4,value=np.array([63.3,1.05])), # U4
-                        ps.SectionCell(support=5,value=np.array([-62.742,44.550]))])] # U5
+                        ps.SectionCell(support=5,value=np.array([-62.742,44.550]))]), # U5
+
+            ps.Section([ps.SectionCell(support=1,value=np.array([-70.612,42.834,11237])), # U1
+                        ps.SectionCell(support=2,value=np.array([-70.617,42.834,11236,419,310])), # U2
+                        ps.SectionCell(support=3,value=np.array([77.2,0.985])), # U3
+                        ps.SectionCell(support=4,value=np.array([63.3,1.05])), # U4
+                        ps.SectionCell(support=5,value=np.array([-62.742,44.550]))])] 
 
 
 # Exhibit the consistency radius of the partially-filled Section with the input data
 consistency_radii=[s1.consistencyRadius(case) for case in input_data]
+print 'Raw consistency radii for each test case: ' + str(consistency_radii)
 
-# Perform data fusion
-fused_data=[s1.fuseAssignment(case) for case in input_data]
+# Demonstrate the consistency radius improves when faulty sensor (U5) is removed
+print 'Case 1 consistency radius after removing faulty sensor ' + str(s1.consistencyRadius(input_data[0],testSupport=[0,1,2,3,4,6,7,8]))
+print 'Case 2 consistency radius after removing faulty sensor ' + str(s1.consistencyRadius(input_data[1],testSupport=[0,1,2,3,4,6,7,8]))
+print 'Case 3 consistency radius after removing faulty sensor ' + str(s1.consistencyRadius(input_data[2],testSupport=[0,1,2,3,4,6,7,8]))
 
-# Exhibit the consistency radius of the fused data and output the final fused values
-fused_consistency_radii=[s1.consistencyRadius(case) for case in fused_data]
+# Iterate over all possible covers rooted on U2, U3, U4, U5
+bestCov=None
+bestFOM=np.inf
+for roots in covers.partitions_iter([i for i,c in enumerate(s1.cells) if c.dimension==1]):
+    cov=[s1.starCells(op) for op in roots]
+    print str(cov)
+    FOM = s1.coverFigureofMerit(input_data[2],cov)
+    if FOM < bestFOM:
+        print 'Improved FOM found: ' + str(FOM) + '; ' + str(cov)
+        bestCov=cov
+        bestFOM=FOM
+
+print 'Best FOM found: ' + str(bestFOM) + '; ' + str(bestCov)
